@@ -1,7 +1,7 @@
 {
-  "name": "dubai-jobs-portal",
+  "name": "norway-jobs-portal",
   "version": "1.0.0",
-  "description": "Dubai Jobs Portal - 100,000 Job Listings | UAE",
+  "description": "Norway Jobs Portal - 100,000 Job Listings | Norway",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
