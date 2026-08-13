@@ -5,6 +5,9 @@ const { getJobData, getJobSchema, TOTAL_JOBS, jobTitles, companies, norwayLocati
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ─── BASE DOMAIN ───────────────────────────────────────────────────────────────
+const BASE_DOMAIN = 'https://norwaydata.up.railway.app';
+
 app.use(compression());
 app.use(express.static(__dirname));
 app.use(express.static('public'));
@@ -57,6 +60,7 @@ function renderHTML({ title, meta, bodyContent, schema }) {
 <meta property="og:title" content="${title}"/>
 <meta property="og:description" content="${meta}"/>
 <meta name="robots" content="index, follow"/>
+<link rel="canonical" href="${BASE_DOMAIN}${req?.path || '/'}"/>
 ${schema ? `<script type="application/ld+json">${JSON.stringify(schema, null, 2)}</script>` : ''}
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -211,11 +215,11 @@ app.get('/', (req, res) => {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "NORWAY.jobs",
-    "url": "https://rightwing-production.up.railway.app",
+    "url": BASE_DOMAIN,
     "description": "Norway's largest job portal with 100,000 job listings — remote and on-site across all regions",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://rightwing-production.up.railway.app/jobs?q={search_term_string}",
+      "target": `${BASE_DOMAIN}/jobs?q={search_term_string}`,
       "query-input": "required name=search_term_string"
     }
   };
@@ -433,33 +437,48 @@ app.get('/jobs/:id', (req, res) => {
   }));
 });
 
-// ── SITEMAP INDEX ─────────────────────────────────────────────────────────────
+// ─── SITEMAP INDEX ─────────────────────────────────────────────────────────────
 app.get('/sitemap.xml', (req, res) => {
   const totalSitemaps = 100;
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
   for (let i = 1; i <= totalSitemaps; i++) {
-    xml += `\n<sitemap><loc>https://rightwing-production.up.railway.app/sitemap-${i}.xml</loc></sitemap>`;
+    xml += `\n  <sitemap>
+    <loc>${BASE_DOMAIN}/sitemap-${i}.xml</loc>
+  </sitemap>`;
   }
   xml += `\n</sitemapindex>`;
-  res.type('application/xml').send(xml);
+  res.set('Content-Type', 'application/xml');
+  res.send(xml);
 });
 
+// ─── SITEMAP PAGES ────────────────────────────────────────────────────────────
 app.get('/sitemap-:num.xml', (req, res) => {
   const num = parseInt(req.params.num);
-  if (!num || num < 1 || num > 100) return res.status(404).send('Not found');
+  if (!num || num < 1 || num > 100) {
+    return res.status(404).send('Not found');
+  }
+  
   const start = (num - 1) * 1000 + 1;
   const end = Math.min(num * 1000, TOTAL_JOBS);
+  
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+  
   for (let i = start; i <= end; i++) {
-    xml += `\n<url><loc>https://rightwing-production.up.railway.app/jobs/${i}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+    xml += `\n  <url>
+    <loc>${BASE_DOMAIN}/jobs/${i}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
   }
+  
   xml += `\n</urlset>`;
-  res.type('application/xml').send(xml);
+  res.set('Content-Type', 'application/xml');
+  res.send(xml);
 });
 
-// ── SITEMAP HTML PAGE ─────────────────────────────────────────────────────────
+// ─── SITEMAP HTML PAGE ─────────────────────────────────────────────────────────
 app.get('/sitemap', (req, res) => {
   const body = `
 <div class="container">
@@ -508,8 +527,9 @@ app.get('/sitemap', (req, res) => {
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain').send(`User-agent: *
 Allow: /
-Sitemap: https://rightwing-production.up.railway.app/sitemap.xml
-Disallow: /api/`);
+Sitemap: ${BASE_DOMAIN}/sitemap.xml
+Disallow: /api/
+Disallow: /apply-now.html`);
 });
 
 // ── API ─────────────────────────────────────────────────────────────────────
@@ -536,4 +556,6 @@ app.listen(PORT, () => {
   console.log(`📋 ${TOTAL_JOBS.toLocaleString()} job pages ready`);
   console.log(`🏢 ${companies.length} companies hiring in Norway`);
   console.log(`📍 ${norwayLocations.length} locations across Norway`);
+  console.log(`🌍 Base URL: ${BASE_DOMAIN}`);
+  console.log(`📄 Sitemap: ${BASE_DOMAIN}/sitemap.xml`);
 });
