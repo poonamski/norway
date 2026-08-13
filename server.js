@@ -48,7 +48,7 @@ const AD_BOTTOM = `
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const JOBS_PER_PAGE = 20;
 
-function renderHTML({ title, meta, bodyContent, schema }) {
+function renderHTML({ title, meta, bodyContent, schema, canonical }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -60,7 +60,7 @@ function renderHTML({ title, meta, bodyContent, schema }) {
 <meta property="og:title" content="${title}"/>
 <meta property="og:description" content="${meta}"/>
 <meta name="robots" content="index, follow"/>
-<link rel="canonical" href="${BASE_DOMAIN}${req?.path || '/'}"/>
+<link rel="canonical" href="${canonical || BASE_DOMAIN}"/>
 ${schema ? `<script type="application/ld+json">${JSON.stringify(schema, null, 2)}</script>` : ''}
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -264,7 +264,8 @@ app.get('/', (req, res) => {
     title: 'NORWAY.jobs — 100,000 Jobs in Norway | Remote & On-site',
     meta: 'Find your next job in Norway. 100,000 verified listings — 50,000 remote and 50,000 on-site jobs across all 11 counties.',
     bodyContent: body,
-    schema: websiteSchema
+    schema: websiteSchema,
+    canonical: BASE_DOMAIN
   }));
 });
 
@@ -272,8 +273,6 @@ app.get('/', (req, res) => {
 app.get('/jobs', (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const typeFilter = req.query.type || 'all';
-  const locationFilter = req.query.location || '';
-  const q = req.query.q || '';
 
   let jobIds = [];
   if (typeFilter === 'remote') {
@@ -349,7 +348,8 @@ app.get('/jobs', (req, res) => {
     title: `Norway Jobs — Page ${page} of ${totalPages.toLocaleString()} | NORWAY.jobs`,
     meta: `Browse ${TOTAL_JOBS.toLocaleString()} jobs in Norway. Page ${page}. Remote and on-site positions across all industries.`,
     bodyContent: body,
-    schema: null
+    schema: null,
+    canonical: `${BASE_DOMAIN}/jobs`
   }));
 });
 
@@ -361,7 +361,8 @@ app.get('/jobs/:id', (req, res) => {
       title: 'Job Not Found | NORWAY.jobs',
       meta: 'This job listing was not found.',
       bodyContent: `<div class="container" style="text-align:center;padding:4rem 1.5rem"><h1>404 — Job Not Found</h1><p style="margin:1rem 0 2rem">This job may have been filled or removed.</p><a href="/jobs" style="color:#003087">← Browse All Jobs</a></div>`,
-      schema: null
+      schema: null,
+      canonical: `${BASE_DOMAIN}/jobs`
     }));
   }
 
@@ -433,7 +434,8 @@ app.get('/jobs/:id', (req, res) => {
     title: `${job.title} at ${job.company} — ${job.location} | NORWAY.jobs`,
     meta: `${job.title} job at ${job.company}. ${job.isRemote ? 'Remote' : job.location}. ${job.salary}. Apply now on NORWAY.jobs.`,
     bodyContent: body,
-    schema
+    schema: schema,
+    canonical: `${BASE_DOMAIN}/jobs/${job.id}`
   }));
 });
 
@@ -519,11 +521,12 @@ app.get('/sitemap', (req, res) => {
     title: 'Sitemap | NORWAY.jobs',
     meta: 'Complete sitemap of NORWAY.jobs with 100,000 job listings across Norway.',
     bodyContent: body,
-    schema: null
+    schema: null,
+    canonical: `${BASE_DOMAIN}/sitemap`
   }));
 });
 
-// ── ROBOTS.TXT ────────────────────────────────────────────────────────────────
+// ─── ROBOTS.TXT ────────────────────────────────────────────────────────────────
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain').send(`User-agent: *
 Allow: /
@@ -532,7 +535,7 @@ Disallow: /api/
 Disallow: /apply-now.html`);
 });
 
-// ── API ─────────────────────────────────────────────────────────────────────
+// ─── API ─────────────────────────────────────────────────────────────────────
 app.get('/api/jobs/:id', (req, res) => {
   const id = parseInt(req.params.id);
   if (!id || id < 1 || id > TOTAL_JOBS) return res.status(404).json({ error: 'Job not found' });
@@ -551,6 +554,7 @@ app.get('/api/jobs', (req, res) => {
   res.json({ page, limit, total: TOTAL_JOBS, jobs });
 });
 
+// ─── START SERVER ─────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`🇳🇴 NORWAY.jobs running on port ${PORT}`);
   console.log(`📋 ${TOTAL_JOBS.toLocaleString()} job pages ready`);
